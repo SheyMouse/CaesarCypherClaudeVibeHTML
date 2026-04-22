@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Aetheric Cipher Engine v1.0</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Special+Elite&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* ── TOKENS ── */
+  :root {
+    --bg:      #1a1208;
+    --surface: #231a0a;
+    --panel:   #2c2010;
+    --border:  #6b4c1e;
+    --border2: #8a6230;
+    --brass:   #c8922a;
+    --brass2:  #e8b84b;
+    --copper:  #b5651d;
+    --steam:   #d4a96a;
+    --text:    #f0deb0;
+    --muted:   #9a7d50;
+    --danger:  #e74c3c;
+    --glow:    rgba(200,146,42,0.18);
+    --glow2:   rgba(200,146,42,0.35);
+  }
+
+  /* ── RESET ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  /* ── BODY ── */
+  body {
+    background-color: var(--bg);
+    background-image:
+      repeating-linear-gradient(0deg,  transparent, transparent 39px, rgba(107,76,30,.15) 39px, rgba(107,76,30,.15) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(107,76,30,.15) 39px, rgba(107,76,30,.15) 40px),
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,146,42,.08) 0%, transparent 70%);
+    color: var(--text);
+    font-family: 'Special Elite', cursive;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(.5rem,2vh,1.5rem) 1rem;
+    overflow-x: hidden;
+  }
+
+  /* ── LAYOUT ── */
+  .container { position: relative; z-index: 1; width: 100%; max-width: 680px; }
+
+  /* ── HEADER ── */
+  header { text-align: center; margin-bottom: clamp(.5rem,1.5vh,1.2rem); }
+
+  .eyebrow {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(.5rem,1vw,.65rem);
+    color: var(--brass); letter-spacing: .35em;
+    text-transform: uppercase; margin-bottom: .3rem;
+  }
+  h1 {
+    font-family: 'Cinzel', serif;
+    font-size: clamp(1.4rem,4vw,2.4rem);
+    font-weight: 700; line-height: 1.1; color: var(--brass2);
+    text-shadow: 0 0 30px rgba(232,184,75,.4), 2px 2px 0 rgba(0,0,0,.6);
+    letter-spacing: .04em;
+  }
+  .subtitle {
+    margin-top: .25rem;
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: clamp(.75rem,1.5vw,.88rem); color: var(--steam);
+  }
+  .ornament {
+    display: flex; align-items: center; gap: .6rem;
+    margin: clamp(.4rem,1vh,.8rem) auto 0; max-width: 280px;
+  }
+  .ornament-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--border2), transparent); }
+  .ornament-gem {
+    width: 6px; height: 6px; border: 1.5px solid var(--brass);
+    transform: rotate(45deg); background: var(--brass);
+    box-shadow: 0 0 6px rgba(200,146,42,.5);
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface); border: 2px solid var(--border); border-radius: 4px;
+    padding: clamp(.9rem,2vh,1.5rem) clamp(.9rem,2vw,1.5rem);
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,.7), inset 0 1px 0 rgba(200,146,42,.1);
+  }
+  .card::before {
+    content: ''; position: absolute; inset: 3px;
+    border: 1px solid rgba(200,146,42,.12); border-radius: 3px; pointer-events: none;
+  }
+
+  /* ── RIVETS ── */
+  .rivet {
+    width: 8px; height: 8px; border-radius: 50%; position: absolute;
+    background: radial-gradient(circle at 35% 35%, var(--brass2), var(--copper));
+    box-shadow: 0 1px 3px rgba(0,0,0,.7), inset 0 1px 1px rgba(255,255,255,.15);
+  }
+  .card .rivet:nth-child(1) { top: 6px;    left: 6px; }
+  .card .rivet:nth-child(2) { top: 6px;    right: 6px; }
+  .card .rivet:nth-child(3) { bottom: 6px; left: 6px; }
+  .card .rivet:nth-child(4) { bottom: 6px; right: 6px; }
+
+  /* ── CARD HEADER ROW ── */
+  .card-header-row {
+    display: flex; align-items: center;
+    gap: .6rem; margin-bottom: clamp(.7rem,1.5vh,1.2rem);
+  }
+
+  /* ── MODE TOGGLE ── */
+  .mode-toggle {
+    display: flex; flex: 1;
+    background: var(--bg); border: 2px solid var(--border); border-radius: 3px; overflow: hidden;
+  }
+  .mode-btn {
+    flex: 1; padding: .5rem .75rem; border: none; border-right: 1px solid var(--border);
+    font-family: 'Cinzel', serif; font-size: clamp(.72rem,1.5vw,.82rem);
+    letter-spacing: .08em; cursor: pointer; transition: all .25s;
+    background: transparent; color: var(--muted); text-transform: uppercase;
+  }
+  .mode-btn:last-child { border-right: none; }
+  .mode-btn.active {
+    background: linear-gradient(180deg, var(--brass) 0%, var(--copper) 100%);
+    color: #1a0f00; text-shadow: 0 1px 0 rgba(255,220,120,.4);
+    box-shadow: inset 0 -2px 4px rgba(0,0,0,.3), 0 0 12px var(--glow);
+  }
+  .mode-btn:not(.active):hover { color: var(--steam); }
+
+  /* ── HELP BUTTON ── */
+  .help-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 2px solid var(--border2);
+    background: radial-gradient(circle at 40% 35%, var(--panel), var(--bg));
+    color: var(--brass2); font-family: 'Cinzel', serif; font-size: .95rem; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all .2s;
+    box-shadow: 0 2px 6px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,220,100,.1);
+  }
+  .help-btn:hover { border-color: var(--brass2); box-shadow: 0 0 14px var(--glow2), 0 2px 6px rgba(0,0,0,.5); }
+
+  /* ── TWO-COLUMN PANELS ── */
+  .panels {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: clamp(.6rem,1.5vw,1rem);
+    margin-bottom: clamp(.6rem,1.2vh,.9rem);
+  }
+
+  /* ── FIELDS ── */
+  .field { margin-bottom: clamp(.5rem,1.2vh,.9rem); }
+  .field:last-child { margin-bottom: 0; }
+
+  label {
+    display: block; font-family: 'Cinzel', serif;
+    font-size: clamp(.68rem,1.2vw,.8rem); letter-spacing: .2em;
+    text-transform: uppercase; color: var(--brass); margin-bottom: .3rem;
+  }
+
+  /* ── INPUTS ── */
+  textarea, input[type="number"] {
+    width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 3px;
+    color: var(--text); font-family: 'Special Elite', cursive; font-size: .9rem;
+    padding: .55rem .8rem; outline: none; resize: none; line-height: 1.5;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  textarea { height: clamp(80px,14vh,130px); min-height: 70px; }
+  textarea:focus, input[type="number"]:focus {
+    border-color: var(--brass);
+    box-shadow: 0 0 0 3px var(--glow), inset 0 1px 3px rgba(0,0,0,.4);
+  }
+  textarea.overlimit { border-color: var(--danger) !important; box-shadow: 0 0 0 3px rgba(231,76,60,.2) !important; }
+
+  /* ── TEXTAREA WRAP & PASTE BUTTON ── */
+  .textarea-wrap { position: relative; }
+  .paste-btn {
+    position: absolute; top: .4rem; right: .4rem;
+    padding: .25rem .55rem; border-radius: 3px;
+    border: 1.5px solid #6a4a9a; background: rgba(44,26,74,.88); color: #c8a8f0;
+    font-family: 'Cinzel', serif; font-size: .6rem; letter-spacing: .08em;
+    text-transform: uppercase; cursor: pointer; transition: all .2s;
+  }
+  .paste-btn:hover { border-color: #9a72cc; background: rgba(44,26,74,1); box-shadow: 0 0 10px rgba(138,72,200,.35); }
+
+  /* ── INPUT ACTIONS ROW ── */
+  .input-actions { display: flex; gap: .4rem; margin-top: .4rem; align-items: center; }
+
+  /* ── SHARED SMALL BUTTON BASE ── */
+  .btn-sm {
+    padding: .35rem .7rem; border-radius: 3px;
+    border: 1.5px solid var(--border); background: var(--panel);
+    color: var(--steam); font-family: 'Cinzel', serif; font-size: .65rem;
+    letter-spacing: .08em; text-transform: uppercase; cursor: pointer; transition: all .2s;
+  }
+  .btn-sm:hover             { border-color: var(--brass);  color: var(--brass2); box-shadow: 0 0 8px var(--glow); }
+  .btn-sm.danger:hover      { border-color: var(--danger);  color: var(--danger);  box-shadow: 0 0 8px rgba(231,76,60,.2); }
+  .btn-sm.copied            { border-color: var(--brass2); color: var(--brass2); }
+
+  /* ── CHAR COUNTER ── */
+  .char-counter {
+    font-family: 'IM Fell English', serif; font-size: .72rem;
+    color: var(--muted); white-space: nowrap; transition: color .3s;
+  }
+  .char-counter.warning { color: var(--danger); }
+
+  /* ── ERROR MESSAGE ── */
+  .error-msg {
+    display: none;
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: .78rem; color: var(--danger);
+    margin-top: .3rem; padding: .3rem .6rem;
+    border-left: 3px solid var(--danger); background: rgba(192,57,43,.1);
+    border-radius: 0 3px 3px 0; line-height: 1.3;
+  }
+  .error-msg.visible { display: block; }
+
+  /* ── OUTPUT BOX ── */
+  .output-box {
+    background: var(--bg); border: 1.5px solid var(--border); border-radius: 3px;
+    padding: .55rem .8rem; font-family: 'Special Elite', cursive; font-size: .9rem;
+    line-height: 1.5; word-break: break-all;
+    height: clamp(80px,14vh,130px); min-height: 70px; overflow-y: auto;
+    position: relative; color: var(--brass2);
+    box-shadow: inset 0 2px 8px rgba(0,0,0,.4);
+  }
+  .output-box.empty        { color: var(--muted); font-style: italic; font-family: 'IM Fell English', serif; }
+  .output-box.decrypt-out  { color: #c8a8f0; }
+  .output-box::after {
+    content: ''; position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--brass2), transparent);
+    pointer-events: none; display: none;
+  }
+  .output-box.scanning::after { display: block; animation: scan 1.2s ease-out forwards; }
+
+  @keyframes scan { 0% { top: 0; opacity: .7; } 100% { top: 100%; opacity: 0; } }
+
+  /* ── OUTPUT ACTIONS ── */
+  .output-actions { display: flex; gap: .4rem; margin-top: .4rem; }
+
+  /* ── KEY SECTION ── */
+  .key-range-hint {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: .82rem; color: var(--steam);
+    letter-spacing: 0; font-weight: normal; text-transform: none;
+  }
+  .key-row { display: flex; align-items: center; gap: .5rem; }
+  .key-row input[type="number"] {
+    flex: 1; -moz-appearance: textfield;
+    text-align: center; font-size: 1.1rem; letter-spacing: .1em;
+    color: var(--brass2); padding: .45rem .5rem;
+  }
+  .key-row input[type="number"]::-webkit-inner-spin-button,
+  .key-row input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  .key-stepper { display: flex; flex-direction: column; gap: 3px; }
+  .step-btn {
+    width: 30px; height: 22px;
+    background: linear-gradient(180deg, var(--panel), var(--bg));
+    border: 1.5px solid var(--border); border-radius: 3px;
+    color: var(--steam); font-size: .65rem; cursor: pointer;
+    transition: all .15s; display: flex; align-items: center; justify-content: center;
+  }
+  .step-btn:hover { border-color: var(--brass); color: var(--brass2); background: var(--panel); }
+
+  .random-btn {
+    padding: 0 .7rem; height: 48px;
+    background: linear-gradient(180deg, var(--panel), var(--bg));
+    border: 1.5px solid var(--border); border-radius: 3px;
+    color: var(--steam); font-family: 'Cinzel', serif; font-size: .58rem;
+    letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+    transition: all .2s; white-space: nowrap; line-height: 1.35; text-align: center;
+  }
+  .random-btn:hover { border-color: var(--brass2); color: var(--brass2); box-shadow: 0 0 10px var(--glow); }
+
+  /* ── GAUGE ── */
+  .gauge-track {
+    position: relative; height: 6px;
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 2px; margin-top: .4rem; overflow: hidden;
+  }
+  .gauge-fill {
+    height: 100%; border-radius: 1px;
+    background: linear-gradient(90deg, var(--copper), var(--brass2));
+    transition: width .2s ease; box-shadow: 0 0 6px rgba(200,146,42,.4);
+  }
+  .gauge-track::after {
+    content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px;
+    background: rgba(200,146,42,.35);
+  }
+  .key-hint {
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: .78rem; color: var(--steam); margin-top: .3rem; line-height: 1.35;
+  }
+
+  /* ── ACTION BUTTON ── */
+  .action-row { margin-top: clamp(.4rem,1vh,.7rem); }
+  .action-btn {
+    width: 100%; padding: .7rem 1rem; border: 2px solid var(--copper); border-radius: 3px;
+    background: linear-gradient(180deg, #a0520f 0%, #7a3a08 100%);
+    color: #f5d78e; font-family: 'Cinzel', serif; font-weight: 700;
+    font-size: clamp(.75rem,1.5vw,.88rem); letter-spacing: .1em; text-transform: uppercase;
+    cursor: pointer; transition: all .2s ease;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+    box-shadow: 0 4px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,220,100,.15);
+    position: relative; overflow: hidden;
+  }
+  .action-btn::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 40%;
+    background: rgba(255,255,255,.04); pointer-events: none;
+  }
+  .action-btn:hover {
+    background: linear-gradient(180deg, #b86010 0%, #8a4208 100%);
+    border-color: var(--brass2);
+    box-shadow: 0 0 20px var(--glow2), 0 4px 12px rgba(0,0,0,.5);
+    transform: translateY(-1px);
+  }
+  .action-btn:active { transform: translateY(0); }
+  .action-btn.decrypt-mode { background: linear-gradient(180deg, #2c1a4a 0%, #1a0f30 100%); border-color: #6a4a9a; color: #c8a8f0; }
+  .action-btn.decrypt-mode:hover { border-color: #9a72cc; box-shadow: 0 0 20px rgba(138,72,200,.3), 0 4px 12px rgba(0,0,0,.5); }
+
+  /* ── HELP MODAL ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(10,8,4,.85); z-index: 100;
+    align-items: center; justify-content: center; padding: 1.5rem;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 2px solid var(--border2);
+    border-radius: 4px; max-width: 560px; width: 100%; padding: 1.75rem;
+    position: relative; box-shadow: 0 20px 60px rgba(0,0,0,.85);
+    max-height: 88vh; overflow-y: auto;
+  }
+  .modal::before {
+    content: ''; position: absolute; inset: 4px;
+    border: 1px solid rgba(200,146,42,.1); border-radius: 2px; pointer-events: none;
+  }
+  .modal-close {
+    position: absolute; top: .75rem; right: .75rem;
+    width: 30px; height: 30px; border-radius: 50%;
+    border: 1.5px solid var(--border); background: var(--bg);
+    color: var(--muted); font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .2s;
+  }
+  .modal-close:hover { border-color: var(--brass); color: var(--brass2); }
+  .modal h2 { font-family: 'Cinzel', serif; font-size: 1.2rem; color: var(--brass2); margin-bottom: .15rem; text-shadow: 0 0 20px rgba(232,184,75,.3); }
+  .modal-version { font-family: 'Special Elite', cursive; font-size: .75rem; color: var(--brass); letter-spacing: .15em; margin-bottom: .2rem; }
+  .modal-sub { font-family: 'IM Fell English', serif; font-style: italic; font-size: .95rem; color: var(--muted); margin-bottom: 1.2rem; padding-bottom: .9rem; border-bottom: 1px solid var(--border); }
+  .modal h3 { font-family: 'Cinzel', serif; font-size: .82rem; letter-spacing: .2em; color: var(--brass); text-transform: uppercase; margin: 1rem 0 .4rem; }
+  .modal p, .modal li { font-family: 'IM Fell English', serif; font-size: 1rem; color: var(--text); line-height: 1.7; }
+  .modal ul { padding-left: 1.25rem; }
+  .modal li { margin-bottom: .3rem; }
+  .modal li::marker { color: var(--brass); }
+
+  /* Changelog table */
+  .changelog { width: 100%; border-collapse: collapse; margin-top: .4rem; }
+  .changelog th { font-family: 'Cinzel', serif; font-size: .7rem; letter-spacing: .15em; color: var(--brass); text-transform: uppercase; text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
+  .changelog td { font-family: 'IM Fell English', serif; font-size: .9rem; color: var(--text); padding: .35rem .5rem; vertical-align: top; border-bottom: 1px solid rgba(107,76,30,.35); line-height: 1.5; }
+  .changelog td:first-child { white-space: nowrap; color: var(--steam); font-size: .82rem; }
+  .changelog tr:last-child td { border-bottom: none; }
+
+  .kbd { display: inline-block; background: var(--bg); border: 1px solid var(--border2); border-radius: 3px; padding: 0 5px; font-family: 'Special Elite', cursive; font-size: .8rem; color: var(--brass2); vertical-align: middle; }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center; margin-top: clamp(.4rem,1vh,.8rem);
+    font-family: 'IM Fell English', serif; font-style: italic;
+    font-size: .88rem; color: var(--steam); letter-spacing: .08em;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ══ HELP MODAL ══ -->
+<div class="modal-backdrop" id="helpModal" onclick="UI.closeHelp(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="UI.closeHelpBtn()">✕</button>
+    <h2>⚙ Operating Instructions</h2>
+    <div class="modal-version">Version 1.0</div>
+    <p class="modal-sub">A Field Guide to the Aetheric Cipher Engine</p>
+
+    <h3>What is a Caesar Cipher?</h3>
+    <p>A Caesar Cipher shifts each character in your message by a fixed number of positions across the printable ASCII range (characters 32–126, giving 95 possible positions). The same key applied in reverse recovers the original message perfectly.</p>
+
+    <h3>Encrypting a Message</h3>
+    <ul>
+      <li>Select the <strong>Encrypt</strong> lever at the top of the apparatus.</li>
+      <li>Type your plaintext into the brass-rimmed chamber — up to <strong>1,000 characters</strong>.</li>
+      <li>Set your <strong>Shift Key</strong> using the ▲▼ stepper, typing directly into the dial, or press <strong>⚄ Random Shift</strong> to let the engine choose one for you.</li>
+      <li>Press <strong>Engage the Engine</strong> (or <span class="kbd">Enter</span>) to produce the ciphertext output.</li>
+      <li>Share the ciphertext and your shift key with the recipient — both are required for decryption.</li>
+    </ul>
+
+    <h3>Decrypting a Message</h3>
+    <ul>
+      <li>Select the <strong>Decrypt</strong> lever.</li>
+      <li>Use the <strong>⎘ Paste</strong> button to load ciphertext from your clipboard, or paste it manually with <span class="kbd">Ctrl+V</span>.</li>
+      <li>Enter the same Shift Key used during encryption.</li>
+      <li>Press <strong>Engage the Engine</strong> to reveal the original message.</li>
+    </ul>
+
+    <h3>Useful Controls</h3>
+    <ul>
+      <li><strong>⚄ Random Shift</strong> — picks a random key between −94 and +94.</li>
+      <li><strong>⎘ Copy</strong> — copies the output to your clipboard; falls back to <span class="kbd">Ctrl+C</span> if blocked.</li>
+      <li><strong>⇅ Use as Input</strong> — transfers the output back into the input chamber and flips the mode.</li>
+      <li><strong>✕ Clear</strong> — wipes the input chamber.</li>
+      <li>The <strong>brass gauge bar</strong> visualises your shift across the full ±94 range; the centre mark is zero.</li>
+    </ul>
+
+    <h3>Character Limit</h3>
+    <p>Messages are limited to <strong>1,000 characters</strong>. The counter turns red when 100 characters remain. Text beyond the limit is automatically truncated.</p>
+
+    <h3>Changelog</h3>
+    <table class="changelog">
+      <thead>
+        <tr><th>Version</th><th>Changes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1.0</td>
+          <td>
+            Initial release. Full Caesar Cipher over printable ASCII range (±94 shifts).
+            Steampunk aesthetic with brass/copper palette, riveted card, and animated gauge.
+            Two-column responsive layout — input and output side by side.
+            Encrypt and Decrypt modes with mode-aware button styles.
+            Shift Key dial with ▲▼ steppers and Random Shift.
+            Paste button (with Ctrl+V fallback) and Clear button on input.
+            Copy button with execCommand fallback on output.
+            ⇅ Use as Input swap control.
+            1,000 character limit with live counter, red warning at 100 remaining, and error banner on overflow.
+            Help modal with operating instructions and this changelog.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div class="container">
+  <header>
+    <div class="eyebrow">◈ Aetheric Cryptography Society ◈</div>
+    <h1>The Aetheric Cipher Engine</h1>
+    <p class="subtitle">Encrypt and decrypt messages with the power of steam and brass</p>
+    <div class="ornament">
+      <div class="ornament-line"></div>
+      <div class="ornament-gem"></div>
+      <div class="ornament-line"></div>
+    </div>
+  </header>
+
+  <div class="card">
+    <div class="rivet"></div><div class="rivet"></div>
+    <div class="rivet"></div><div class="rivet"></div>
+
+    <!-- Mode toggle + Help -->
+    <div class="card-header-row">
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="encryptBtn" onclick="App.setMode('encrypt')">⚙ Encrypt</button>
+        <button class="mode-btn"        id="decryptBtn" onclick="App.setMode('decrypt')">⚙ Decrypt</button>
+      </div>
+      <button class="help-btn" onclick="UI.openHelp()" title="Operating Instructions">?</button>
+    </div>
+
+    <!-- Two-column: Input | Output -->
+    <div class="panels">
+      <div>
+        <div class="field">
+          <label id="inputLabel">Message to Encrypt</label>
+          <div class="textarea-wrap">
+            <textarea id="messageInput" placeholder="Inscribe your message here..." oninput="App.onTextInput()"></textarea>
+            <button class="paste-btn" id="pasteBtn" onclick="App.paste()" title="Paste from clipboard">⎘ Paste</button>
+          </div>
+          <div class="input-actions">
+            <button class="btn-sm danger" onclick="App.clearInput()">✕ Clear</button>
+            <div style="flex:1"></div>
+            <div class="char-counter" id="charCounter"><span id="charCount">0</span> / 1,000</div>
+          </div>
+          <div class="error-msg" id="errorMsg">⚠ Limit is 1,000 characters — excess text removed.</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="field">
+          <label id="outputLabel">Encrypted Output</label>
+          <div class="output-box empty" id="outputBox">Awaiting transmission...</div>
+          <div class="output-actions">
+            <button class="btn-sm" id="copyBtn" onclick="App.copy()">⎘ Copy</button>
+            <button class="btn-sm" onclick="App.swapToInput()">⇅ Use as Input</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shift Key -->
+    <div class="field">
+      <label>Shift Key <span class="key-range-hint">(−94 to +94)</span></label>
+      <div class="key-row">
+        <div class="key-stepper">
+          <button class="step-btn" onclick="App.stepKey(1)">▲</button>
+          <button class="step-btn" onclick="App.stepKey(-1)">▼</button>
+        </div>
+        <input type="number" id="keyInput" value="0" min="-94" max="94" oninput="App.clampKey()">
+        <button class="random-btn" onclick="App.randomKey()">⚄ Random<br>Shift</button>
+      </div>
+      <div class="gauge-track"><div class="gauge-fill" id="gaugeFill" style="width:50%"></div></div>
+      <div class="key-hint" id="keyHint">Shift: 0 — no shift applied; message will pass through unchanged</div>
+    </div>
+
+    <!-- Engage -->
+    <div class="action-row">
+      <button class="action-btn" id="actionBtn" onclick="App.process()">⚙ Engage the Engine — Encrypt</button>
+    </div>
+  </div>
+
+  <footer>ASCII printable range · characters 32–126 · ±94 possible shifts · 1,000 character limit</footer>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════ */
+const PRINTABLE_MIN = 32;
+const PRINTABLE_MAX = 126;
+const RANGE         = PRINTABLE_MAX - PRINTABLE_MIN + 1; // 95
+const MAX_CHARS     = 1000;
+const WARN_AT       = 100;
+
+/* ═══════════════════════════════════════════════
+   CACHED DOM REFERENCES
+═══════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+const el = {
+  encryptBtn:   $('encryptBtn'),
+  decryptBtn:   $('decryptBtn'),
+  inputLabel:   $('inputLabel'),
+  outputLabel:  $('outputLabel'),
+  actionBtn:    $('actionBtn'),
+  messageInput: $('messageInput'),
+  pasteBtn:     $('pasteBtn'),
+  charCount:    $('charCount'),
+  charCounter:  $('charCounter'),
+  errorMsg:     $('errorMsg'),
+  outputBox:    $('outputBox'),
+  copyBtn:      $('copyBtn'),
+  keyInput:     $('keyInput'),
+  gaugeFill:    $('gaugeFill'),
+  keyHint:      $('keyHint'),
+  helpModal:    $('helpModal'),
+};
+
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+let mode = 'encrypt'; // 'encrypt' | 'decrypt'
+
+/* ═══════════════════════════════════════════════
+   CIPHER CORE
+═══════════════════════════════════════════════ */
+function caesarShift(text, shift) {
+  shift = ((shift % RANGE) + RANGE) % RANGE;
+  const out = [];
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    out.push(code >= PRINTABLE_MIN && code <= PRINTABLE_MAX
+      ? String.fromCharCode(((code - PRINTABLE_MIN + shift) % RANGE) + PRINTABLE_MIN)
+      : text[i]);
+  }
+  return out.join('');
+}
+
+/* ═══════════════════════════════════════════════
+   KEY HELPERS
+═══════════════════════════════════════════════ */
+function getKey()           { return parseInt(el.keyInput.value) || 0; }
+function clampVal(v)        { return Math.max(-94, Math.min(94, v)); }
+
+function updateGauge() {
+  const v = getKey();
+  el.gaugeFill.style.width = `${((v + 94) / 188) * 100}%`;
+  el.keyHint.textContent = v === 0
+    ? 'Shift: 0 — no shift applied; message will pass through unchanged'
+    : `Shift: ${v > 0 ? '+' : ''}${v} — each character moves ${Math.abs(v)} position${Math.abs(v) !== 1 ? 's' : ''} across the printable ASCII range`;
+}
+
+/* ═══════════════════════════════════════════════
+   COUNTER & VALIDATION
+═══════════════════════════════════════════════ */
+function updateCounter() {
+  const len = el.messageInput.value.length;
+  el.charCount.textContent = len;
+  el.charCounter.classList.toggle('warning', MAX_CHARS - len <= WARN_AT);
+}
+
+function enforceLimit(showError) {
+  if (el.messageInput.value.length > MAX_CHARS) {
+    el.messageInput.value = el.messageInput.value.slice(0, MAX_CHARS);
+    if (showError) showError_();
+  }
+  updateCounter();
+}
+
+function showError_() {
+  el.errorMsg.classList.add('visible');
+  el.messageInput.classList.add('overlimit');
+  setTimeout(() => el.messageInput.classList.remove('overlimit'), 1200);
+}
+
+function clearError() {
+  el.errorMsg.classList.remove('visible');
+  el.messageInput.classList.remove('overlimit');
+}
+
+/* ═══════════════════════════════════════════════
+   CLIPBOARD
+═══════════════════════════════════════════════ */
+function writeClipboard(text, onSuccess) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(() => fallbackCopy(text, onSuccess));
+  } else {
+    fallbackCopy(text, onSuccess);
+  }
+}
+
+function fallbackCopy(text, cb) {
+  const ta = Object.assign(document.createElement('textarea'), {
+    value: text,
+    style: 'position:fixed;top:-9999px;left:-9999px;opacity:0',
+  });
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); cb(); } catch (e) { /* silent */ }
+  document.body.removeChild(ta);
+}
+
+function tempLabel(btn, label, reset, ms = 1800) {
+  btn.textContent = label;
+  setTimeout(() => { btn.textContent = reset; }, ms);
+}
+
+/* ═══════════════════════════════════════════════
+   OUTPUT HELPERS
+═══════════════════════════════════════════════ */
+function setOutput(text, isDecrypt) {
+  el.outputBox.textContent = text;
+  el.outputBox.className   = `output-box${isDecrypt ? ' decrypt-out' : ''} scanning`;
+  setTimeout(() => el.outputBox.classList.remove('scanning'), 1300);
+  el.copyBtn.textContent = '⎘ Copy';
+  el.copyBtn.classList.remove('copied');
+}
+
+function resetOutput() {
+  el.outputBox.textContent = 'Awaiting transmission...';
+  el.outputBox.className   = 'output-box empty';
+}
+
+/* ═══════════════════════════════════════════════
+   APP — public surface (called from HTML)
+═══════════════════════════════════════════════ */
+const App = {
+
+  setMode(m) {
+    mode = m;
+    const enc = m === 'encrypt';
+    el.encryptBtn.classList.toggle('active', enc);
+    el.decryptBtn.classList.toggle('active', !enc);
+    el.inputLabel.textContent      = enc ? 'Message to Encrypt' : 'Encrypted Message';
+    el.outputLabel.textContent     = enc ? 'Encrypted Output'   : 'Decrypted Output';
+    el.actionBtn.textContent       = `⚙ Engage the Engine — ${enc ? 'Encrypt' : 'Decrypt'}`;
+    el.actionBtn.className         = `action-btn${enc ? '' : ' decrypt-mode'}`;
+    el.messageInput.placeholder    = enc ? 'Inscribe your message here...' : 'Paste your encoded transmission here...';
+    resetOutput();
+    clearError();
+  },
+
+  clampKey() {
+    el.keyInput.value = clampVal(getKey());
+    updateGauge();
+  },
+
+  stepKey(delta) {
+    el.keyInput.value = clampVal(getKey() + delta);
+    updateGauge();
+  },
+
+  randomKey() {
+    el.keyInput.value = Math.floor(Math.random() * 189) - 94;
+    updateGauge();
+  },
+
+  onTextInput() {
+    if (el.messageInput.value.length > MAX_CHARS) {
+      el.messageInput.value = el.messageInput.value.slice(0, MAX_CHARS);
+      showError_();
+    } else {
+      clearError();
+    }
+    updateCounter();
+  },
+
+  process() {
+    clearError();
+    const msg = el.messageInput.value;
+    if (!msg.trim()) { App._shake(); return; }
+    const shift = mode === 'decrypt' ? -getKey() : getKey();
+    setOutput(caesarShift(msg, shift), mode === 'decrypt');
+  },
+
+  copy() {
+    if (el.outputBox.classList.contains('empty')) return;
+    writeClipboard(el.outputBox.textContent, () => {
+      el.copyBtn.classList.add('copied');
+      tempLabel(el.copyBtn, '✓ Copied', '⎘ Copy');
+      setTimeout(() => el.copyBtn.classList.remove('copied'), 1800);
+    });
+  },
+
+  async paste() {
+    clearError();
+    try {
+      const text = await navigator.clipboard.readText();
+      el.messageInput.value = text;
+      enforceLimit(true);
+      tempLabel(el.pasteBtn, '✓ Pasted', '⎘ Paste', 1500);
+    } catch {
+      el.messageInput.focus();
+      tempLabel(el.pasteBtn, 'Use Ctrl+V', '⎘ Paste', 2500);
+    }
+  },
+
+  clearInput() {
+    el.messageInput.value = '';
+    updateCounter();
+    clearError();
+    el.messageInput.focus();
+  },
+
+  swapToInput() {
+    if (el.outputBox.classList.contains('empty')) return;
+    clearError();
+    el.messageInput.value = el.outputBox.textContent.slice(0, MAX_CHARS);
+    if (el.outputBox.textContent.length > MAX_CHARS) showError_();
+    updateCounter();
+    App.setMode(mode === 'encrypt' ? 'decrypt' : 'encrypt');
+    el.messageInput.focus();
+  },
+
+  _shake() {
+    el.messageInput.style.borderColor = 'var(--danger)';
+    el.messageInput.style.boxShadow   = '0 0 0 3px rgba(231,76,60,.2)';
+    setTimeout(() => { el.messageInput.style.borderColor = ''; el.messageInput.style.boxShadow = ''; }, 700);
+    el.messageInput.focus();
+  },
+};
+
+/* ═══════════════════════════════════════════════
+   UI — modal helpers (called from HTML)
+═══════════════════════════════════════════════ */
+const UI = {
+  openHelp()    { el.helpModal.classList.add('open'); },
+  closeHelpBtn(){ el.helpModal.classList.remove('open'); },
+  closeHelp(e)  { if (e.target === el.helpModal) UI.closeHelpBtn(); },
+};
+
+/* ═══════════════════════════════════════════════
+   EVENT LISTENERS
+═══════════════════════════════════════════════ */
+el.messageInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); App.process(); }
+});
+
+el.messageInput.addEventListener('paste', () => {
+  setTimeout(() => enforceLimit(true), 0);
+});
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+updateGauge();
+</script>
+</body>
+</html>
