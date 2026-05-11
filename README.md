@@ -1,140 +1,81 @@
-# ⚙ The Aetheric Cipher Engine
+# Caesar Cipher
 
-**Version 1.0**  
-*A browser-based Caesar Cipher tool with a steampunk aesthetic*
-
----
-
-## Overview
-
-The Aetheric Cipher Engine is a single-file, zero-dependency web application for encrypting and decrypting text messages using the Caesar Cipher algorithm. It operates entirely in the browser — no server, no data transmitted, no installation required.
-
-The cipher shifts each character across the **printable ASCII range** (characters 32–126, giving 95 possible positions) by a user-chosen amount between −94 and +94. Applying the same shift in reverse perfectly recovers the original message.
+A browser-based Caesar Cipher tool. No installation, no server, no data transmitted — open the HTML file and go.
 
 ---
 
-## Features
+## What is the Caesar Cipher?
 
-- **Encrypt and Decrypt modes** — toggle between modes with a single click
-- **Shift Key control** — type a value, use the ▲▼ stepper buttons, or click Random Shift
-- **Random Shift** — generates a random key between −94 and +94
-- **Brass gauge bar** — visual indicator of the shift position across the full range
-- **Paste button** — reads directly from the clipboard (falls back to Ctrl+V prompt if access is blocked)
-- **Copy button** — writes output to the clipboard (falls back to `execCommand` if the Clipboard API is unavailable)
-- **Clear button** — wipes the input field
-- **⇅ Use as Input** — transfers the output back into the input chamber and flips the mode, useful for chained operations
-- **1,000 character limit** — enforced on typing, keyboard paste, and the Paste button
-- **Live character counter** — turns red when 100 characters remain
-- **Error banner** — appears when input is truncated due to the character limit
-- **Help modal** — in-app operating instructions and changelog
-- **Responsive layout** — fits on screen without scrolling; input and output panels sit side by side
+The Caesar Cipher is one of the oldest and simplest encryption techniques. It works by shifting every character in a message a fixed number of positions along a known sequence. To decrypt, the recipient applies the same shift in reverse. For example, with a shift of +3, the letter **A** becomes **D**, **B** becomes **E**, and so on.
+
+This implementation operates over the full printable ASCII range — characters 32 through 126 (space to tilde), giving 95 possible positions. Any character outside that range (such as newlines) passes through unchanged.
+
+```
+encrypted_code = ((original_code − 32 + shift) mod 95) + 32
+```
+
+The Caesar Cipher is not intended for serious security use, but it is a clean demonstration of substitution ciphers and is perfectly serviceable for casual encoding.
 
 ---
 
-## Usage
+## Version History
 
-### Opening the app
+| Version | Theme | Notable Changes |
+|---------|-------|-----------------|
+| **1.0** | Steampunk (brass & copper) | Initial release. Single shift key (±94). Manual encrypt/decrypt. Paste, Copy, Swap, Clear. 1,000 character limit. |
+| **2.0** | Retro C64 (blue screen, VT323 font) | Redesigned as a mobile-first layout. Live encryption as you type. Shift key repositioned above the output field for one-thumb use. |
+| **3.0** | Retro C64 | Dual shift keys (±94 each), both silently embedded in the output — the recipient needs no separate key exchange. Live output. Download (.txt) and Share buttons added. Auto key detection on decrypt. |
+| **4.0** | Retro C64 | Version bump. All internal version references updated. |
 
-Open `caesar-cipher.html` in any modern browser. No build step, no dependencies, no internet connection required (fonts load from Google Fonts if online; the app functions without them).
+---
+
+## Using Version 4.0
+
+Open `caesar-cipher-04_webapp.html` in any modern browser.
 
 ### Encrypting a message
 
-1. Ensure **Encrypt** mode is selected (default).
-2. Type or paste your message into the left panel (up to 1,000 characters).
-3. Set your **Shift Key** — any integer from −94 to +94. Use the ▲▼ buttons, type directly into the dial, or click **⚄ Random Shift**.
-4. Press **Engage the Engine** or hit **Enter**.
-5. The encrypted ciphertext appears in the right panel. Click **⎘ Copy** to copy it.
-6. Share the ciphertext *and* the shift key with the intended recipient — both are required for decryption.
+1. Make sure **Encrypt** is selected in the mode strip at the top.
+2. Type or paste your message into the input field (up to 1,000 characters). Encryption happens live as you type.
+3. Set **Shift Key 1** and **Shift Key 2** — any integer from −94 to +94 each. Use the ▲▼ steppers, type directly into the field, or hit the random button.
+4. The encrypted ciphertext appears immediately in the output area. Both shift keys are silently embedded in the first two characters of the output, so the recipient does not need to know the keys separately.
+5. Use **[ DOWNLOAD ]** to save the ciphertext as a `.txt` file, or **[ SHARE ]** to send it via your system share sheet (falls back to clipboard copy if unavailable).
 
 ### Decrypting a message
 
 1. Switch to **Decrypt** mode.
-2. Paste the ciphertext using the **⎘ Paste** button or **Ctrl+V**.
-3. Enter the same Shift Key that was used to encrypt the message.
-4. Press **Engage the Engine**.
-5. The original message appears in the right panel.
+2. Paste the ciphertext into the input field. The app automatically extracts the embedded shift keys and displays them as **AUTO** — you do not need to enter them manually.
+3. The decrypted message appears live in the output area.
+4. Use **[ DOWNLOAD ]** or **[ SHARE ]** to export the result.
+
+### Other controls
+
+- **PASTE** — reads from the clipboard (falls back to a Ctrl+V prompt if clipboard access is blocked).
+- **CLEAR** — wipes the input field.
+- **⇅ / SWAP** — moves the output back into the input and flips the mode; useful for chaining operations.
+- **?** — opens the in-app help modal with instructions and the full changelog.
+- The character counter below the input turns red when 100 characters remain. Input is hard-capped at 1,000 characters.
+
+### Browser compatibility
+
+The app works in all modern browsers. The Clipboard API and Web Share API require either a secure context (HTTPS or localhost) or explicit browser permission; both fall back gracefully if unavailable.
 
 ---
 
-## How the cipher works
-
-The Caesar Cipher is a substitution cipher. Each printable ASCII character is shifted by a fixed number of positions within the printable range (32–126):
+## File Structure
 
 ```
-encrypted_code = ((original_code - 32 + shift) mod 95) + 32
+caesar-cipher-01.html      Version 1.0 — steampunk theme
+caesar-cipher-02.html      Version 2.0 — C64 theme, mobile-first
+caesar-cipher-03_webapp.html   Version 3.0 — dual keys, embedded key transport
+caesar-cipher-04_webapp.html   Version 4.0 — current release
+README.md                  This document
 ```
 
-Non-printable characters (e.g. newlines) are passed through unchanged.
-
-The shift is normalised so that any integer input — including values outside ±94 or negative values — produces a valid, reversible result. A shift of 0 produces no change. A shift of +1 followed by a shift of −1 restores the original text.
-
-**Example** with shift +3:
-
-| Plaintext  | A  | B  | C  | …  | ~  |
-|------------|----|----|----|----|-----|
-| Ciphertext | D  | E  | F  | …  | !  |
-
----
-
-## Character limit
-
-Messages are capped at **1,000 characters**. The counter below the input field tracks usage and turns red when 100 characters remain. Any text pasted or typed beyond the limit is automatically truncated and an error banner is shown.
-
----
-
-## Browser compatibility
-
-Tested and working in all modern browsers:
-
-| Browser         | Clipboard Paste | Clipboard Copy | Fallback |
-|-----------------|-----------------|----------------|----------|
-| Chrome / Edge   | ✓ Native        | ✓ Native       | —        |
-| Firefox         | ✓ Native        | ✓ Native       | —        |
-| Safari          | ✓ Native        | ✓ Native       | —        |
-| Older browsers  | Ctrl+V prompt   | ✓ execCommand  | ✓        |
-
-The Clipboard API requires either a secure context (HTTPS or localhost) or explicit browser permission. If access is blocked, the Paste button prompts the user to press Ctrl+V, and the Copy button falls back to `document.execCommand('copy')`.
-
----
-
-## File structure
-
-```
-caesar-cipher.html   Single self-contained application file
-README.md            This document
-```
-
-All HTML, CSS, and JavaScript are contained within `caesar-cipher.html`. There are no external scripts, no build tools, and no runtime dependencies beyond the Google Fonts stylesheet (which is optional).
-
----
-
-## Technical notes
-
-- **Cipher range:** ASCII 32 (`space`) through 126 (`~`) — 95 printable characters
-- **Key range:** −94 to +94 (the full non-trivial shift range for 95 characters)
-- **Shift normalisation:** `shift = ((shift % 95) + 95) % 95` — handles negative and out-of-range values
-- **JS architecture:** Two namespaces — `App` (cipher logic and user actions) and `UI` (modal controls) — with all DOM references cached at startup for efficiency
-- **No frameworks:** Vanilla HTML, CSS, and JavaScript only
-
----
-
-## Changelog
-
-### Version 1.0
-- Initial release
-- Full Caesar Cipher over printable ASCII range (±94 shifts)
-- Steampunk aesthetic — brass/copper palette, riveted card, animated cog divider, gauge bar
-- Two-column responsive layout — input and output side by side
-- Encrypt and Decrypt modes with mode-aware button styles
-- Shift Key dial with ▲▼ steppers and Random Shift
-- Paste button (with Ctrl+V fallback) and Clear button on input
-- Copy button with `execCommand` fallback on output
-- ⇅ Use as Input swap control
-- 1,000 character limit with live counter, red warning at 100 remaining, and error banner on overflow
-- In-app Help modal with operating instructions and changelog
+Each file is fully self-contained: all HTML, CSS, and JavaScript in a single file, no build step, no dependencies beyond an optional Google Fonts stylesheet.
 
 ---
 
 ## Licence
 
-This project is provided as-is for personal and educational use.
+Provided as-is for personal and educational use.

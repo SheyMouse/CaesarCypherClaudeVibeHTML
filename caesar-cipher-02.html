@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Caesar Cipher</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+<style>
+
+/* ── C64 PALETTE ── */
+:root {
+  --c64-blue:       #4040b0;   /* classic screen background */
+  --c64-border:     #6c5eb5;   /* VIC-II border colour */
+  --c64-text:       #a0a0f8;   /* light periwinkle — authentic C64 text */
+  --c64-white:      #ffffff;
+  --c64-dark:       #2a2a7a;   /* darker blue for depth */
+  --c64-darker:     #1a1a55;   /* deepest, input backgrounds */
+  --c64-highlight:  #d0d0ff;   /* bright text / labels */
+  --c64-cursor:     #a0a0f8;
+  --c64-green:      #88ff88;   /* output text — warm contrast pop */
+  --c64-yellow:     #f0e050;   /* accent / active states */
+  --c64-red:        #ff6666;   /* errors */
+
+  --radius: 4px;   /* C64 is boxy — minimal rounding */
+  --ease: 0.12s ease;
+}
+
+/* ── RESET ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+
+/* ── BODY — VIC-II BORDER ── */
+body {
+  background: var(--c64-border);
+  color: var(--c64-text);
+  font-family: 'VT323', 'Courier New', monospace;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 16px;
+}
+
+/* ── SCREEN — inner blue area ── */
+.screen {
+  background: var(--c64-blue);
+  width: 100%;
+  max-width: 560px;
+  padding: 20px 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow:
+    inset 0 0 0 2px var(--c64-darker),
+    0 0 0 3px var(--c64-dark);
+}
+
+/* ── BOOT HEADER ── */
+.boot-header {
+  border-bottom: 2px solid var(--c64-dark);
+  padding-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.boot-line {
+  font-size: clamp(0.9rem, 3vw, 1.05rem);
+  color: var(--c64-text);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+
+.boot-line.bright { color: var(--c64-highlight); }
+.boot-line.title  { color: var(--c64-white); font-size: clamp(1.1rem, 4vw, 1.35rem); letter-spacing: 0.06em; }
+
+.cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1em;
+  background: var(--c64-cursor);
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+  margin-left: 1px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.help-btn {
+  align-self: flex-end;
+  margin-top: -2rem;
+  padding: 0.2rem 0.6rem;
+  border: 2px solid var(--c64-text);
+  background: transparent;
+  color: var(--c64-text);
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all var(--ease);
+}
+.help-btn:hover {
+  border-color: var(--c64-yellow);
+  color: var(--c64-yellow);
+}
+
+/* ── MODE STRIP ── */
+.mode-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 2px solid var(--c64-dark);
+  overflow: hidden;
+}
+
+.mode-btn {
+  padding: 0.5rem 0.5rem;
+  border: none;
+  border-right: 2px solid var(--c64-dark);
+  background: var(--c64-darker);
+  color: var(--c64-text);
+  font-family: 'VT323', monospace;
+  font-size: clamp(1rem, 3.5vw, 1.2rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--ease);
+  text-align: center;
+}
+.mode-btn:last-child { border-right: none; }
+
+.mode-btn.active {
+  background: var(--c64-yellow);
+  color: var(--c64-darker);
+}
+.mode-btn:not(.active):hover {
+  background: var(--c64-dark);
+  color: var(--c64-highlight);
+}
+
+/* ── SECTION LABEL ── */
+.sec-label {
+  font-size: clamp(0.85rem, 2.8vw, 1rem);
+  color: var(--c64-text);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.sec-label::before { content: '> '; color: var(--c64-yellow); }
+
+.char-counter {
+  font-size: 0.9rem;
+  color: var(--c64-text);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.char-counter.warn { color: var(--c64-red); }
+
+/* ── TEXTAREA ── */
+.textarea-wrap { position: relative; }
+
+textarea {
+  width: 100%;
+  background: var(--c64-darker);
+  border: 2px solid var(--c64-dark);
+  color: var(--c64-white);
+  font-family: 'VT323', monospace;
+  font-size: clamp(1rem, 3vw, 1.15rem);
+  line-height: 1.5;
+  padding: 0.6rem 2.4rem 0.6rem 0.65rem;
+  resize: none;
+  outline: none;
+  height: 120px;
+  caret-color: var(--c64-cursor);
+  transition: border-color var(--ease);
+  -webkit-appearance: none;
+  border-radius: var(--radius);
+}
+textarea::placeholder { color: var(--c64-dark); opacity: 1; }
+textarea:focus { border-color: var(--c64-text); }
+textarea.overlimit { border-color: var(--c64-red) !important; }
+
+.paste-btn {
+  position: absolute;
+  top: 0.35rem; right: 0.35rem;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--c64-dark);
+  background: var(--c64-dark);
+  color: var(--c64-text);
+  font-family: 'VT323', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all var(--ease);
+  border-radius: 2px;
+}
+.paste-btn:hover { border-color: var(--c64-yellow); color: var(--c64-yellow); }
+
+/* ── INPUT ACTIONS ── */
+.input-actions { display: flex; gap: 0.4rem; margin-top: 4px; }
+
+/* ── ERR MSG ── */
+.err-msg {
+  font-size: 0.95rem;
+  color: var(--c64-red);
+  display: none;
+  letter-spacing: 0.04em;
+}
+.err-msg.show { display: block; }
+.err-msg::before { content: '? '; }
+
+/* ── DIVIDER ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--c64-dark);
+}
+
+/* ── KEY SECTION ── */
+.key-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.key-range-note {
+  font-size: 0.9rem;
+  color: var(--c64-text);
+  letter-spacing: 0.04em;
+}
+
+.key-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.step-group {
+  display: flex;
+  border: 2px solid var(--c64-dark);
+  border-radius: var(--radius);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.step-btn {
+  width: 44px; height: 48px;
+  border: none;
+  background: var(--c64-darker);
+  color: var(--c64-text);
+  font-family: 'VT323', monospace;
+  font-size: 1.4rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all var(--ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.step-btn + .step-btn { border-left: 2px solid var(--c64-dark); }
+.step-btn:hover, .step-btn:active {
+  background: var(--c64-dark);
+  color: var(--c64-yellow);
+}
+
+.key-num {
+  flex: 1;
+  background: var(--c64-darker);
+  border: 2px solid var(--c64-dark);
+  border-radius: var(--radius);
+  color: var(--c64-yellow);
+  font-family: 'VT323', monospace;
+  font-size: 2rem;
+  text-align: center;
+  padding: 0.2rem 0.4rem;
+  outline: none;
+  height: 48px;
+  -moz-appearance: textfield;
+  -webkit-appearance: none;
+  transition: border-color var(--ease);
+}
+.key-num::-webkit-inner-spin-button,
+.key-num::-webkit-outer-spin-button { -webkit-appearance: none; }
+.key-num:focus { border-color: var(--c64-text); }
+
+.rnd-btn {
+  flex-shrink: 0;
+  height: 48px;
+  padding: 0 0.85rem;
+  border: 2px solid var(--c64-dark);
+  border-radius: var(--radius);
+  background: var(--c64-darker);
+  color: var(--c64-text);
+  font-family: 'VT323', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.rnd-btn:hover, .rnd-btn:active {
+  border-color: var(--c64-text);
+  color: var(--c64-yellow);
+  background: var(--c64-dark);
+}
+
+/* ── GAUGE ── */
+.gauge-track {
+  height: 4px;
+  background: var(--c64-darker);
+  border: 1px solid var(--c64-dark);
+  margin-top: 8px;
+  position: relative;
+}
+.gauge-fill {
+  height: 100%;
+  background: var(--c64-yellow);
+  transition: width 0.14s ease;
+}
+.gauge-track::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: -2px; bottom: -2px;
+  width: 1px;
+  background: var(--c64-dark);
+}
+.gauge-hint {
+  font-size: 0.95rem;
+  color: var(--c64-text);
+  margin-top: 4px;
+  letter-spacing: 0.03em;
+}
+.gauge-hint strong { color: var(--c64-yellow); }
+
+/* ── OUTPUT ── */
+.output-box {
+  background: var(--c64-darker);
+  border: 2px solid var(--c64-dark);
+  border-radius: var(--radius);
+  min-height: 120px;
+  padding: 0.6rem 0.65rem;
+  font-family: 'VT323', monospace;
+  font-size: clamp(1rem, 3vw, 1.15rem);
+  line-height: 1.5;
+  word-break: break-all;
+  overflow-y: auto;
+  color: var(--c64-green);
+  transition: border-color var(--ease);
+}
+.output-box.empty {
+  color: var(--c64-dark);
+}
+.output-box.flash { animation: outFlash 0.2s ease; }
+@keyframes outFlash { 0%{opacity:0.3} 100%{opacity:1} }
+
+/* ── LIVE BADGE ── */
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.88rem;
+  color: var(--c64-green);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.live-dot {
+  width: 6px; height: 6px;
+  background: var(--c64-green);
+  animation: blink 1s step-end infinite;
+}
+
+/* ── OUTPUT ACTIONS ── */
+.output-actions { display: flex; gap: 0.4rem; margin-top: 4px; align-items: center; }
+
+/* ── BUTTONS ── */
+.btn {
+  padding: 0.25rem 0.65rem;
+  border: 2px solid var(--c64-dark);
+  border-radius: var(--radius);
+  background: var(--c64-darker);
+  color: var(--c64-text);
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--ease);
+  display: flex; align-items: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:hover, .btn:active {
+  border-color: var(--c64-text);
+  color: var(--c64-yellow);
+  background: var(--c64-dark);
+}
+.btn.ok { border-color: var(--c64-green); color: var(--c64-green); }
+
+/* ── EXECUTE ── */
+.execute-btn {
+  width: 100%;
+  padding: 0.65rem;
+  border: 2px solid var(--c64-text);
+  border-radius: var(--radius);
+  background: var(--c64-dark);
+  color: var(--c64-white);
+  font-family: 'VT323', monospace;
+  font-size: clamp(1.1rem, 3.5vw, 1.35rem);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--ease);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.execute-btn:hover, .execute-btn:active {
+  background: var(--c64-yellow);
+  border-color: var(--c64-yellow);
+  color: var(--c64-darker);
+}
+
+/* ── FOOTER ── */
+.c64-footer {
+  font-size: 0.85rem;
+  color: var(--c64-text);
+  letter-spacing: 0.06em;
+  text-align: center;
+  opacity: 0.7;
+}
+
+/* ── HELP MODAL ── */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,40,0.88);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+}
+@media (min-width: 500px) {
+  .modal-backdrop { align-items: center; padding: 1.5rem; }
+}
+.modal-backdrop.open { display: flex; }
+
+.modal {
+  background: var(--c64-blue);
+  border: 3px solid var(--c64-text);
+  width: 100%;
+  max-width: 520px;
+  max-height: 84vh;
+  overflow-y: auto;
+  padding: 1.2rem 1.2rem 2rem;
+  position: relative;
+  box-shadow: 6px 6px 0 var(--c64-darker);
+}
+@media (min-width: 500px) {
+  .modal { box-shadow: 8px 8px 0 var(--c64-darker); }
+}
+
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--c64-dark);
+  margin: 0 auto 1rem;
+}
+@media (min-width: 500px) { .modal-handle { display: none; } }
+
+.modal-close {
+  position: absolute;
+  top: 0.75rem; right: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border: 2px solid var(--c64-text);
+  background: transparent;
+  color: var(--c64-text);
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--ease);
+}
+.modal-close:hover { border-color: var(--c64-yellow); color: var(--c64-yellow); }
+
+.modal h2 {
+  font-family: 'VT323', monospace;
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  color: var(--c64-white);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.modal-ver {
+  font-size: 0.85rem;
+  color: var(--c64-text);
+  letter-spacing: 0.06em;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--c64-dark);
+  margin-bottom: 0.75rem;
+}
+.modal h3 {
+  font-size: 1rem;
+  color: var(--c64-yellow);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0.9rem 0 0.3rem;
+}
+.modal h3::before { content: '** '; }
+.modal h3::after  { content: ' **'; }
+
+.modal p, .modal li {
+  font-size: 0.95rem;
+  color: var(--c64-text);
+  line-height: 1.65;
+  letter-spacing: 0.02em;
+}
+.modal ul { padding-left: 1.2rem; list-style: none; }
+.modal li::before { content: '- '; color: var(--c64-highlight); }
+.modal strong { color: var(--c64-white); }
+
+.changelog { width: 100%; border-collapse: collapse; margin-top: 0.35rem; }
+.changelog th {
+  font-size: 0.85rem;
+  color: var(--c64-highlight);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--c64-dark);
+}
+.changelog td {
+  font-size: 0.88rem;
+  color: var(--c64-text);
+  padding: 0.3rem 0.5rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--c64-dark);
+  line-height: 1.55;
+}
+.changelog td:first-child { white-space: nowrap; color: var(--c64-yellow); }
+.changelog tr:last-child td { border-bottom: none; }
+
+/* ── MISC ── */
+::selection { background: var(--c64-text); color: var(--c64-darker); }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--c64-darker); }
+::-webkit-scrollbar-thumb { background: var(--c64-dark); }
+
+</style>
+</head>
+<body>
+
+<!-- Help Modal -->
+<div class="modal-backdrop" id="helpModal" onclick="UI.backdropClose(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="UI.closeHelp()">X</button>
+
+    <h2>Caesar Cipher</h2>
+    <div class="modal-ver">V2.0  *  ASCII 32-126  *  +/-94 SHIFTS</div>
+
+    <h3>How It Works</h3>
+    <p>Every printable character shifts by a fixed number of positions across ASCII range 32-126 (95 characters). The same key in reverse decrypts the message.</p>
+
+    <h3>Encrypting</h3>
+    <ul>
+      <li>Select <strong>ENCRYPT</strong> mode.</li>
+      <li>Type your message - output updates <strong>live</strong>.</li>
+      <li>Set shift key with <strong>+ -</strong>, type a value, or press <strong>RANDOM</strong>.</li>
+      <li>Share the ciphertext <strong>and</strong> the key with your recipient.</li>
+    </ul>
+
+    <h3>Decrypting</h3>
+    <ul>
+      <li>Select <strong>DECRYPT</strong> mode.</li>
+      <li>Paste ciphertext and enter the same key used to encrypt.</li>
+    </ul>
+
+    <h3>Controls</h3>
+    <ul>
+      <li><strong>RANDOM</strong> - random shift between -94 and +94.</li>
+      <li><strong>COPY</strong> - copy output to clipboard.</li>
+      <li><strong>SWAP</strong> - move output to input and flip mode.</li>
+      <li><strong>CLEAR</strong> - clear the input field.</li>
+      <li>Messages capped at <strong>1000 characters</strong>.</li>
+    </ul>
+
+    <h3>Changelog</h3>
+    <table class="changelog">
+      <thead><tr><th>VER</th><th>NOTES</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>2.0</td>
+          <td>C64-inspired theme. Mobile-first layout. Live encryption. Shift key above output for better one-thumb use.</td>
+        </tr>
+        <tr>
+          <td>1.0</td>
+          <td>Initial release. Steampunk theme. Caesar Cipher over ASCII 32-126. Encrypt/Decrypt, shift dial, paste/copy/swap/clear, 1000 char limit.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- App -->
+<div class="screen">
+
+  <!-- Boot header -->
+  <div class="boot-header">
+    <div class="boot-line bright">**** CAESAR CIPHER V2.0 ****</div>
+    <div class="boot-line">ASCII 32-126  38911 BASIC BYTES FREE</div>
+    <div class="boot-line title">READY.<span class="cursor"></span></div>
+    <button class="help-btn" onclick="UI.openHelp()" aria-label="Help">?</button>
+  </div>
+
+  <!-- Mode -->
+  <div class="mode-strip">
+    <button class="mode-btn active" id="encryptBtn" onclick="App.setMode('encrypt')">Encrypt</button>
+    <button class="mode-btn"        id="decryptBtn" onclick="App.setMode('decrypt')">Decrypt</button>
+  </div>
+
+  <!-- Input -->
+  <div>
+    <div class="sec-label">
+      <span id="inputLabel">Message</span>
+      <span class="char-counter" id="charCounter"><span id="charCount">0</span>/1000</span>
+    </div>
+    <div class="textarea-wrap">
+      <textarea id="msgInput"
+        placeholder="TYPE OR PASTE MESSAGE..."
+        oninput="App.onInput()"></textarea>
+      <button class="paste-btn" id="pasteBtn" onclick="App.paste()">PASTE</button>
+    </div>
+    <div class="err-msg" id="errMsg">LIMIT REACHED. INPUT CAPPED AT 1000 CHARS.</div>
+    <div class="input-actions">
+      <button class="btn" onclick="App.clear()">CLEAR</button>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Shift Key -->
+  <div>
+    <div class="key-header">
+      <div class="sec-label" style="margin-bottom:0">Shift Key</div>
+      <span class="key-range-note">-94 TO +94</span>
+    </div>
+    <div class="key-control" style="margin-top:6px">
+      <div class="step-group">
+        <button class="step-btn" onclick="App.step(-1)" aria-label="Decrease">-</button>
+        <button class="step-btn" onclick="App.step(1)"  aria-label="Increase">+</button>
+      </div>
+      <input type="number" class="key-num" id="keyInput" value="0" min="-94" max="94" oninput="App.clamp()">
+      <button class="rnd-btn" onclick="App.random()">RANDOM</button>
+    </div>
+    <div class="gauge-track"><div class="gauge-fill" id="gaugeFill" style="width:50%"></div></div>
+    <div class="gauge-hint" id="gaugeHint">NO SHIFT APPLIED</div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Output -->
+  <div>
+    <div class="sec-label">
+      <span id="outputLabel">Output</span>
+      <div class="live-badge"><div class="live-dot"></div>LIVE</div>
+    </div>
+    <div class="output-box empty" id="outputBox">AWAITING INPUT...</div>
+    <div class="output-actions">
+      <button class="btn" id="copyBtn" onclick="App.copy()">COPY</button>
+      <button class="btn" onclick="App.swap()">SWAP</button>
+    </div>
+  </div>
+
+  <!-- Execute -->
+  <button class="execute-btn" id="execBtn" onclick="App.process()">[ ENCRYPT ]</button>
+
+  <div class="c64-footer">CAESAR CIPHER V2.0  *  ASCII 32-126  *  +/-94 SHIFTS</div>
+
+</div><!-- /screen -->
+
+<script>
+'use strict';
+
+const PMIN=32, PMAX=126, RANGE=95, LIMIT=1000, WARN=100;
+
+const $=id=>document.getElementById(id);
+const el={
+  encBtn:$('encryptBtn'), decBtn:$('decryptBtn'),
+  inLbl:$('inputLabel'),  outLbl:$('outputLabel'),
+  execBtn:$('execBtn'),
+  msgIn:$('msgInput'),    pasteBtn:$('pasteBtn'),
+  cCount:$('charCount'),  cCtr:$('charCounter'),
+  errMsg:$('errMsg'),
+  outBox:$('outputBox'),  copyBtn:$('copyBtn'),
+  keyIn:$('keyInput'),
+  gauge:$('gaugeFill'),   hint:$('gaugeHint'),
+  modal:$('helpModal'),
+};
+
+let mode='encrypt';
+
+function shift(text,n){
+  n=((n%RANGE)+RANGE)%RANGE;
+  return[...text].map(c=>{
+    const code=c.charCodeAt(0);
+    return code>=PMIN&&code<=PMAX
+      ?String.fromCharCode(((code-PMIN+n)%RANGE)+PMIN):c;
+  }).join('');
+}
+
+function key(){return parseInt(el.keyIn.value)||0;}
+function clampK(v){return Math.max(-94,Math.min(94,v));}
+
+function syncGauge(){
+  const v=key(),a=Math.abs(v);
+  el.gauge.style.width=`${((v+94)/188)*100}%`;
+  el.hint.innerHTML=v===0
+    ?'NO SHIFT APPLIED'
+    :`EACH CHAR MOVES <strong>${v>0?'+':''}${v}</strong> POSITION${a!==1?'S':''}`;
+  live();
+}
+
+function syncCounter(){
+  const n=el.msgIn.value.length;
+  el.cCount.textContent=n;
+  el.cCtr.classList.toggle('warn',LIMIT-n<=WARN);
+}
+
+function cap(){
+  if(el.msgIn.value.length>LIMIT){el.msgIn.value=el.msgIn.value.slice(0,LIMIT);showErr();}
+  syncCounter();
+}
+
+function showErr(){el.errMsg.classList.add('show');el.msgIn.classList.add('overlimit');setTimeout(hideErr,2500);}
+function hideErr(){el.errMsg.classList.remove('show');el.msgIn.classList.remove('overlimit');}
+
+function live(){
+  const txt=el.msgIn.value;
+  if(!txt){
+    el.outBox.textContent='AWAITING INPUT...';
+    el.outBox.className='output-box empty';
+    return;
+  }
+  el.outBox.textContent=shift(txt,mode==='decrypt'?-key():key());
+  el.outBox.className='output-box flash';
+  setTimeout(()=>el.outBox.classList.remove('flash'),220);
+}
+
+function writeClip(t,cb){
+  (navigator.clipboard?.writeText(t)??Promise.reject())
+    .then(cb).catch(()=>{
+      const x=Object.assign(document.createElement('textarea'),
+        {value:t,style:'position:fixed;top:-9999px;opacity:0'});
+      document.body.appendChild(x);x.focus();x.select();
+      try{document.execCommand('copy');cb();}catch{}
+      document.body.removeChild(x);
+    });
+}
+
+const App={
+  setMode(m){
+    mode=m;const enc=m==='encrypt';
+    el.encBtn.classList.toggle('active',enc);
+    el.decBtn.classList.toggle('active',!enc);
+    el.inLbl.textContent =enc?'Message'  :'Ciphertext';
+    el.outLbl.textContent=enc?'Output'   :'Decrypted';
+    el.execBtn.textContent=enc?'[ ENCRYPT ]':'[ DECRYPT ]';
+    el.msgIn.placeholder=enc?'TYPE OR PASTE MESSAGE...':'PASTE CIPHERTEXT HERE...';
+    hideErr();live();
+  },
+  clamp(){el.keyIn.value=clampK(key());syncGauge();},
+  step(d){el.keyIn.value=clampK(key()+d);syncGauge();},
+  random(){el.keyIn.value=Math.floor(Math.random()*189)-94;syncGauge();},
+  onInput(){
+    el.msgIn.value.length>LIMIT
+      ?(el.msgIn.value=el.msgIn.value.slice(0,LIMIT),showErr())
+      :hideErr();
+    syncCounter();live();
+  },
+  process(){
+    if(!el.msgIn.value.trim()){
+      el.msgIn.style.borderColor='var(--c64-red)';
+      setTimeout(()=>{el.msgIn.style.borderColor='';},700);
+      el.msgIn.focus();return;
+    }
+    live();
+    const orig=el.execBtn.textContent;
+    el.execBtn.textContent='[ OK - DONE ]';
+    setTimeout(()=>{el.execBtn.textContent=orig;},950);
+  },
+  async paste(){
+    hideErr();
+    try{
+      el.msgIn.value=await navigator.clipboard.readText();
+      cap();live();
+      el.pasteBtn.textContent='OK';
+      setTimeout(()=>{el.pasteBtn.textContent='PASTE';},1400);
+    }catch{
+      el.msgIn.focus();
+      el.pasteBtn.textContent='CTRL+V';
+      setTimeout(()=>{el.pasteBtn.textContent='PASTE';},2200);
+    }
+  },
+  clear(){el.msgIn.value='';syncCounter();hideErr();el.msgIn.focus();live();},
+  copy(){
+    if(el.outBox.classList.contains('empty'))return;
+    writeClip(el.outBox.textContent,()=>{
+      el.copyBtn.classList.add('ok');
+      el.copyBtn.textContent='OK!';
+      setTimeout(()=>{el.copyBtn.classList.remove('ok');el.copyBtn.textContent='COPY';},1600);
+    });
+  },
+  swap(){
+    if(el.outBox.classList.contains('empty'))return;
+    el.msgIn.value=el.outBox.textContent.slice(0,LIMIT);
+    syncCounter();hideErr();
+    App.setMode(mode==='encrypt'?'decrypt':'encrypt');
+    el.msgIn.focus();
+  },
+};
+
+const UI={
+  openHelp(){el.modal.classList.add('open');},
+  closeHelp(){el.modal.classList.remove('open');},
+  backdropClose(e){if(e.target===el.modal)UI.closeHelp();},
+};
+
+el.msgIn.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();App.process();}
+});
+el.msgIn.addEventListener('paste',()=>setTimeout(()=>{cap();live();},0));
+
+syncGauge();
+</script>
+</body>
+</html>
